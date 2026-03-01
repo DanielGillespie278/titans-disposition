@@ -50,7 +50,7 @@ Three adaptive gates modulate every deposit:
 | **Learn** | theta | Absorb new signal | 0.07 | 0.005 |
 | **Momentum** | eta | Maintain trajectory | 0.90 | 0.90 |
 
-40 routine commits barely touch the M-vector. One correction reshapes it. Stability is guaranteed by [ISS Lyapunov bounds](docs/research/CONVERGENCE_PROOF.md) with a 464x safety margin.
+40 routine commits barely touch the M-vector. One correction reshapes it. Stability is guaranteed by [ISS Lyapunov bounds](docs/research/CONVERGENCE_PROOF.md) with a 464x step-size safety margin.
 
 ### 2. Self-Improvement Loop
 
@@ -140,6 +140,10 @@ Day 5+: gn=0.020  ██████████                (steady state)
 Variance collapsed 12x from learning to steady state. Corrections continued producing meaningful deposits even after the gradient norm floored -- the structural signature of taste.
 
 ## Architecture
+
+<p align="center">
+  <img src="assets/architecture.png" alt="TITANS Disposition Architecture" width="100%">
+</p>
 
 ```
 ┌──────────────────────────────────────────────────────┐
