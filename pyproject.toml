@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "titans-disposition"
+version = "0.1.0"
+description = "Persistent memory + self-improvement for AI coding agents"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Daniel Gillespie" },
+]
+keywords = [
+    "ai",
+    "agents",
+    "disposition",
+    "memory",
+    "titans",
+    "self-improvement",
+    "claude-code",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+gpu = ["torch>=2.0"]
+hooks = ["httpx>=0.24"]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+all = [
+    "titans-disposition[gpu,hooks,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/DanielGillespie278/titans-disposition"
+Documentation = "https://github.com/DanielGillespie278/titans-disposition/tree/main/docs"
+Repository = "https://github.com/DanielGillespie278/titans-disposition"
+Issues = "https://github.com/DanielGillespie278/titans-disposition/issues"
+
+[project.scripts]
+titans = "titans_disposition.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/titans_disposition"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"

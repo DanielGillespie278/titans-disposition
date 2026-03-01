@@ -1,0 +1,35 @@
+{
+  "cycle_id": 13,
+  "timestamp": "2026-02-21T14:30:00Z",
+  "score": 0.66,
+  "band": "MARGINAL",
+  "dimensions": {
+    "D1_task_alignment": 0.85,
+    "D2_read_before_write": 0.70,
+    "D3_concise_delivery": 0.45,
+    "D4_tool_safety": 0.90,
+    "D5_leader_sync": 0.60,
+    "D6_citation_traceability": 0.50
+  },
+  "gate_scores": {
+    "triage_ratio_under_2x": true,
+    "citation_accuracy_above_80pct": true,
+    "no_production_guard_violations": true
+  },
+  "continuous_scores": {
+    "exploration_ratio": 1.13,
+    "citation_accuracy": 1.0,
+    "task_relevant_fraction": 0.72,
+    "multi_category_budget_adherence": 0.65
+  },
+  "protocols_active": [
+    "TriageProtocol",
+    "CitationProtocol",
+    "ProductionGuard"
+  ],
+  "weight_changes": {
+    "D3_concise_delivery": "+0.08 (deficit-chasing, later deprecated)",
+    "D5_leader_sync": "+0.05 (deficit-chasing, later deprecated)"
+  },
+  "notes": "First cycle with structural protocols. Exploration ratio collapsed from 4.6x to 1.13x. Citation accuracy 0/4 -> 5/5. Score low due to novel protocols + untested conditions, but directional signals were strong."
+}
