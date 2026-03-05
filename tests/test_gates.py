@@ -307,3 +307,70 @@ class TestPMatrixParameterization:
             for eta in _GRID_ETAS:
                 R_M = compute_iss_norm_bound(alpha=alpha, eta=eta)
                 assert np.isfinite(R_M) and R_M > 0
+
+
+def test_verify_lyapunov_condition_production_defaults():
+    """Production defaults should satisfy the sufficient condition."""
+    from titans_disposition.constants import verify_lyapunov_condition, THETA_BASE
+
+    holds, theta_max, K_crit = verify_lyapunov_condition()
+    assert holds, "Production defaults must satisfy Lyapunov condition"
+    assert theta_max > THETA_BASE, "theta_max should exceed production theta"
+    assert K_crit > 0.64
+
+
+def test_verify_lyapunov_condition_rejects_large_k():
+    """Large spectral norms should fail the sufficient condition."""
+    from titans_disposition.constants import verify_lyapunov_condition, THETA_BASE
+
+    holds, theta_max, K_crit = verify_lyapunov_condition(K=5.0)
+    assert not holds
+    assert theta_max < THETA_BASE
+    assert K_crit < 5.0
+
+
+def test_variant_uses_fallback_caps_when_condition_fails():
+    """Variant should use conservative caps when Lyapunov condition fails."""
+    from titans_disposition.variant import TITANSVariant, Variant
+    from titans_disposition.constants import (
+        LYAPUNOV_FALLBACK_M_CAP,
+        LYAPUNOV_FALLBACK_S_CAP,
+        TITANS_PRINCIPLED_BOUNDS,
+    )
+
+    if not TITANS_PRINCIPLED_BOUNDS:
+        return
+
+    variant = TITANSVariant(name=Variant.MAC, input_dim=64, memory_dim=128)
+    variant.W_K = np.eye(64) * 5.0
+    variant.W_V = np.eye(64, 128) * 5.0
+    variant._recompute_principled_caps()
+
+    assert variant._principled_m_cap == LYAPUNOV_FALLBACK_M_CAP
+    assert variant._principled_s_cap == LYAPUNOV_FALLBACK_S_CAP
+
+
+def test_iss_m_and_s_bounds_finite():
+    """Explicit M and S bounds should be finite for production values."""
+    from titans_disposition.constants import (
+        compute_iss_m_norm_bound,
+        compute_iss_s_norm_bound,
+    )
+
+    R_M = compute_iss_m_norm_bound()
+    R_S = compute_iss_s_norm_bound()
+    assert 100 < R_M < 300, f"R_M should be ~174, got {R_M}"
+    assert 5 < R_S < 50, f"R_S should be ~12, got {R_S}"
+
+
+def test_step_size_governor():
+    """Step size governor should return a safe theta above production."""
+    from titans_disposition.constants import (
+        compute_step_size_governor,
+        THETA_BASE,
+    )
+
+    theta_safe = compute_step_size_governor()
+    assert theta_safe > THETA_BASE, (
+        f"Governor should allow production theta: {theta_safe} vs {THETA_BASE}"
+    )

@@ -571,6 +571,143 @@ def compute_alpha_ceiling(
     return 1 - retention ** (1.0 / horizon)
 
 
+# Conservative caps used when the Lyapunov sufficient condition fails.
+LYAPUNOV_FALLBACK_M_CAP: float = 200.0
+LYAPUNOV_FALLBACK_S_CAP: float = 50.0
+
+# Safety margin applied to derived norm caps.
+ISS_SAFETY_MARGIN: float = 1.15
+
+
+def compute_lyapunov_intermediates(
+    alpha: float = ALPHA_BASE,
+    delta: float = 0.0001,
+) -> dict[str, float]:
+    """Compute shared intermediate values for Lyapunov analysis."""
+    f = (1 - alpha) * (1 - delta)
+    mu = 1 - delta
+    one_minus_f = 1 - f
+    return {"f": f, "mu": mu, "one_minus_f": one_minus_f}
+
+
+def verify_lyapunov_condition(
+    alpha: float = ALPHA_BASE,
+    delta: float = 0.0001,
+    theta: float = THETA_BASE,
+    eta: float = ETA_BASE,
+    K: float = 0.64,
+) -> tuple[bool, float, float]:
+    """
+    Check the Lyapunov sufficient condition for ISS bounds validity.
+
+    The ISS proof requires:
+        theta * K^2 <= (f - eta)^2 / (mu * (f + eta))
+
+    Returns (condition_holds, theta_max, K_crit).
+    If condition_holds is False, ISS-derived bounds should not be used.
+    """
+    vals = compute_lyapunov_intermediates(alpha, delta)
+    f, mu = vals["f"], vals["mu"]
+
+    if eta >= f:
+        return (False, 0.0, 0.0)
+
+    f_minus_eta = f - eta
+    f_plus_eta = f + eta
+    rhs = f_minus_eta ** 2 / (mu * f_plus_eta)
+
+    if K <= 1e-15:
+        theta_max = float("inf")
+    else:
+        theta_max = rhs / (K ** 2)
+
+    if theta <= 1e-15:
+        K_crit = float("inf")
+    else:
+        K_crit = math.sqrt(rhs / theta)
+
+    condition_holds = theta <= theta_max
+    return (condition_holds, theta_max, K_crit)
+
+
+def compute_iss_m_norm_bound(
+    alpha: float = ALPHA_BASE,
+    delta: float = 0.0001,
+    theta: float = THETA_BASE,
+    eta: float = ETA_BASE,
+    K: float = 0.64,
+    V: float = 0.77,
+) -> float:
+    """
+    Compute the principled M norm cap from Theorem 1.
+
+    R_M = 2 * theta * K * V * mu * (f + eta) / ((1 - f) * (f - eta))
+
+    Valid when eta < f and the Lyapunov sufficient condition holds.
+    """
+    vals = compute_lyapunov_intermediates(alpha, delta)
+    f, mu, one_minus_f = vals["f"], vals["mu"], vals["one_minus_f"]
+
+    if eta >= f or one_minus_f < 1e-15:
+        return LYAPUNOV_FALLBACK_M_CAP
+
+    f_minus_eta = f - eta
+    if f_minus_eta < 1e-15:
+        return LYAPUNOV_FALLBACK_M_CAP
+
+    R_M = (2.0 * theta * K * V * mu * (f + eta)) / (one_minus_f * f_minus_eta)
+    return R_M
+
+
+def compute_iss_s_norm_bound(
+    alpha: float = ALPHA_BASE,
+    delta: float = 0.0001,
+    theta: float = THETA_BASE,
+    eta: float = ETA_BASE,
+    K: float = 0.64,
+    V: float = 0.77,
+) -> float:
+    """
+    Compute the principled S (momentum) norm cap from Theorem 1.
+
+    R_S = 2 * theta * K * V / (1 - f) * sqrt((f + eta) / eta)
+    """
+    vals = compute_lyapunov_intermediates(alpha, delta)
+    f, one_minus_f = vals["f"], vals["one_minus_f"]
+
+    if eta < 1e-15 or one_minus_f < 1e-15:
+        return LYAPUNOV_FALLBACK_S_CAP
+
+    R_S = (2.0 * theta * K * V / one_minus_f) * math.sqrt((f + eta) / eta)
+    return R_S
+
+
+def compute_step_size_governor(
+    alpha: float = ALPHA_BASE,
+    delta: float = 0.0001,
+    eta_eff: float = ETA_BASE,
+    k_norm_sq: float = 0.64 ** 2,
+) -> float:
+    """
+    Maximum theta for which the ISS proof holds given current gates and key norm.
+
+    theta_safe = (f - eta)^2 / (mu * (f + eta) * K^2)
+
+    Returns theta_safe. If current theta > theta_safe, the system should
+    either reduce theta or fall back to conservative clamps.
+    """
+    vals = compute_lyapunov_intermediates(alpha, delta)
+    f, mu = vals["f"], vals["mu"]
+
+    if eta_eff >= f or k_norm_sq < 1e-15:
+        return 0.0
+
+    f_minus_eta = f - eta_eff
+    f_plus_eta = f + eta_eff
+
+    return f_minus_eta ** 2 / (mu * f_plus_eta * max(k_norm_sq, 1e-15))
+
+
 # =============================================================================
 # VALIDATION
 # =============================================================================

@@ -10,6 +10,10 @@ from titans_disposition.constants import (
     find_stable_eta,
     compute_iss_norm_bound,
     compute_alpha_ceiling,
+    verify_lyapunov_condition,
+    compute_iss_m_norm_bound,
+    compute_iss_s_norm_bound,
+    compute_step_size_governor,
 )
 
 __all__ = [
@@ -18,4 +22,8 @@ __all__ = [
     "find_stable_eta",
     "compute_iss_norm_bound",
     "compute_alpha_ceiling",
+    "verify_lyapunov_condition",
+    "compute_iss_m_norm_bound",
+    "compute_iss_s_norm_bound",
+    "compute_step_size_governor",
 ]

@@ -39,7 +39,13 @@ from titans_disposition.constants import (
     TITANS_PRINCIPLED_BOUNDS,
     ISS_M_NORM_CAP,
     ISS_S_NORM_CAP,
-    compute_iss_norm_bound,
+    LYAPUNOV_FALLBACK_M_CAP,
+    LYAPUNOV_FALLBACK_S_CAP,
+    ISS_SAFETY_MARGIN,
+    verify_lyapunov_condition,
+    compute_iss_m_norm_bound,
+    compute_iss_s_norm_bound,
+    compute_step_size_governor,
     compute_alpha_ceiling,
     stability_gate_2step,
     stability_gate_nstep,
@@ -568,12 +574,37 @@ class TITANSVariant:
     ) -> None:
         """Recompute ISS norm caps from given gate values.
 
-        Accepts runtime gate averages and is called periodically
-        (every _caps_recompute_interval updates) from update_weights_v2
-        when gate means drift >20% from cached values.
+        Guards on Lyapunov sufficient condition: if the condition fails
+        (e.g. large spectral norms), falls back to conservative fixed caps
+        instead of using proof-derived bounds outside the theorem's validity.
         """
-        self._principled_m_cap = compute_iss_norm_bound(alpha=alpha, eta=eta)
-        self._principled_s_cap = ISS_S_NORM_CAP
+        # Estimate spectral norms from weight matrices.
+        K = float(np.linalg.norm(self.W_K, ord=2)) if hasattr(self, "W_K") else 0.64
+        V = float(np.linalg.norm(self.W_V, ord=2)) if hasattr(self, "W_V") else 0.77
+
+        condition_holds, theta_max, K_crit = verify_lyapunov_condition(
+            alpha=alpha, eta=eta, K=K,
+        )
+        theta_safe = compute_step_size_governor(
+            alpha=alpha, eta_eff=eta, k_norm_sq=K ** 2,
+        )
+
+        if not condition_holds:
+            self._principled_m_cap = LYAPUNOV_FALLBACK_M_CAP
+            self._principled_s_cap = LYAPUNOV_FALLBACK_S_CAP
+        else:
+            self._principled_m_cap = (
+                compute_iss_m_norm_bound(alpha=alpha, eta=eta, K=K, V=V)
+                * ISS_SAFETY_MARGIN
+            )
+            self._principled_s_cap = max(
+                25.0,
+                compute_iss_s_norm_bound(alpha=alpha, eta=eta, K=K, V=V),
+            )
+
+        # Keep local values available for debugging without widening public API.
+        self._lyapunov_theta_max = min(theta_max, theta_safe)
+        self._lyapunov_k_crit = K_crit
         self._caps_alpha = alpha
         self._caps_eta = eta
 
